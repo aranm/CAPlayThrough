@@ -654,7 +654,9 @@ OSStatus CAPlayThrough::OutputProc(void *inRefCon,
 	}
 
 	//copy the data from the buffers	
-	err = This->mBuffer->Fetch(ioData, inNumberFrames, SInt64(TimeStamp->mSampleTime - This->mInToOutSampleOffset), false);	
+	err = This->mBuffer->Fetch(ioData, inNumberFrames, SInt64(TimeStamp->mSampleTime - This->mInToOutSampleOffset));
+	//old line of code different once ring buffer is replaced
+	//err = This->mBuffer->Fetch(ioData, inNumberFrames, SInt64(TimeStamp->mSampleTime - This->mInToOutSampleOffset), false);	
 	if(err != kCARingBufferError_OK)
 	{
 		MakeBufferSilent (ioData);
