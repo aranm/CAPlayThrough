@@ -98,6 +98,10 @@ private:
 	AUNode mOutputNode;
 	AudioUnit mOutputUnit;
 	
+	//the mixer
+	AUNode mMixerNode;
+	AudioUnit mMixerUnit;
+	
 	//Buffer sample info
 	Float64 mFirstInputTime;
 	Float64 mFirstOutputTime;
@@ -149,7 +153,11 @@ OSStatus CAPlayThrough::Init(AudioDeviceID input, AudioDeviceID output)
 	checkErr(err);
 	
 	// the varispeed unit should only be conected after the input and output formats have been set
-	err = AUGraphConnectNodeInput(mGraph, mVarispeedNode, 0, mOutputNode, 0);
+	err = AUGraphConnectNodeInput(mGraph, mVarispeedNode, 0, mMixerNode, 0);
+	checkErr(err);
+
+	//connect the output of the varispeed node to the mixer input.
+	err = AUGraphConnectNodeInput(mGraph, mMixerNode, 0, mOutputNode, 0);
 	checkErr(err);
 	
 	err = AUGraphInitialize(mGraph); 
@@ -337,7 +345,7 @@ OSStatus CAPlayThrough::SetupGraph(AudioDeviceID out)
 OSStatus CAPlayThrough::MakeGraph()
 {
 	OSStatus err = noErr;
-	AudioComponentDescription varispeedDesc,outDesc;
+	AudioComponentDescription varispeedDesc,outDesc, mixerDesc;
 	
 	//Q:Why do we need a varispeed unit?
 	//A:If the input device and the output device are running at different sample rates
@@ -354,17 +362,28 @@ OSStatus CAPlayThrough::MakeGraph()
 	outDesc.componentFlags = 0;
 	outDesc.componentFlagsMask = 0;
 	
+	mixerDesc.componentType = kAudioUnitType_Mixer;
+	mixerDesc.componentSubType = kAudioUnitSubType_StereoMixer;
+	mixerDesc.componentManufacturer = kAudioUnitManufacturer_Apple;
+	mixerDesc.componentFlags = 0;
+	mixerDesc.componentFlagsMask = 0;
 	//////////////////////////
 	///MAKE NODES
 	//This creates a node in the graph that is an AudioUnit, using
 	//the supplied ComponentDescription to find and open that unit	
 	err = AUGraphAddNode(mGraph, &varispeedDesc, &mVarispeedNode);
 	checkErr(err);
+	//add a mixer node after the input to use for metering
+	err = AUGraphAddNode(mGraph, &mixerDesc, &mMixerNode);
+	checkErr(err);
 	err = AUGraphAddNode(mGraph, &outDesc, &mOutputNode);
 	checkErr(err);
 	
 	//Get Audio Units from AUGraph node
 	err = AUGraphNodeInfo(mGraph, mVarispeedNode, NULL, &mVarispeedUnit);   
+	checkErr(err);
+	//get the mixer node
+	err = AUGraphNodeInfo(mGraph, mMixerNode, NULL, &mMixerUnit);
 	checkErr(err);
 	err = AUGraphNodeInfo(mGraph, mOutputNode, NULL, &mOutputUnit);   
 	checkErr(err);
@@ -536,7 +555,19 @@ OSStatus CAPlayThrough::SetupBuffers()
 	//Set the new audio stream formats for the rest of the AUs...
 	err = AudioUnitSetProperty(mVarispeedUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, 0, &asbd, propertySize);
 	checkErr(err);	
+	
+	//set the audio stream to the mixer to be the same on both sides
+	err = AudioUnitSetProperty(mMixerUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &asbd, propertySize);
+	checkErr(err);	
+	err = AudioUnitSetProperty(mMixerUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, 0, &asbd, propertySize);
+	checkErr(err);	
+	
 	err = AudioUnitSetProperty(mOutputUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &asbd, propertySize);
+	checkErr(err);
+
+	// turn metering ON for the mixer
+	UInt32 data = 1;
+	err = AudioUnitSetProperty(mMixerUnit, kAudioUnitProperty_MeteringMode, kAudioUnitScope_Global, 0, &data, propertySize);
 	checkErr(err);
 
 	//calculate number of buffers from channels
