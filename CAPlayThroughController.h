@@ -56,6 +56,10 @@
 	AudioDeviceList	*				mOutputDeviceList;
 	AudioDeviceID					inputDevice;
 	AudioDeviceID					outputDevice;
+	
+	//volume level
+	IBOutlet NSTextField *			mLevel;
+	IBOutlet NSLevelIndicator *		mLevelIndicator;
 }
 
 - (IBAction)startStop:(id)sender;

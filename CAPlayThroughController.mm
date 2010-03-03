@@ -69,6 +69,9 @@ static void	BuildDeviceMenu(AudioDeviceList *devlist, NSPopUpButton *menu, Audio
 		NSLog(@"ERROR: playThroughHost init failed!");
 		exit(1);
 	}
+	
+	//volume metering
+	[NSTimer scheduledTimerWithTimeInterval:1./20.0 target:self selector:@selector(handleVolumeMetering) userInfo:nil repeats:YES];
 }
 
 - (void) dealloc 
@@ -170,6 +173,24 @@ static void	BuildDeviceMenu(AudioDeviceList *devlist, NSPopUpButton *menu, Audio
 		if (initSel == (*i).mID)
 			[menu selectItemAtIndex: index];
 		}
+	}
+}
+
+#pragma mark Volume meter stuff
+
+-(void)setVolumeLevel:(int)volumeLevel{
+	if (volumeLevel < -60){
+		volumeLevel = -60;
+	}
+	[mLevel setStringValue:[NSString stringWithFormat:@"%d", volumeLevel]];
+	[mLevelIndicator setIntValue:volumeLevel];
+}
+
+-(void)handleVolumeMetering{
+	
+	if(playThroughHost->IsRunning()){
+		float currentAverageVolume = playThroughHost->GetAverageVolume();
+		[self setVolumeLevel:(int)currentAverageVolume];
 	}
 }
 

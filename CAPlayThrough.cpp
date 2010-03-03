@@ -61,6 +61,8 @@ public:
 	AudioDeviceID GetOutputDeviceID()	{ return mOutputDevice.mID; }
 	
 
+	float GetAverageVolume();
+	
 private:
 	OSStatus SetupGraph(AudioDeviceID out);
 	OSStatus MakeGraph();
@@ -711,6 +713,20 @@ OSStatus CAPlayThroughHost::StreamListener( AudioStreamID         inStream,
 	return noErr;		
 }
 
+#pragma mark Added functionality
+
+float CAPlayThrough::GetAverageVolume(){
+	
+	float amps[2];
+	amps[0] = 0.0;
+	amps[1] = 0.0;
+	
+	AudioUnitGetParameter(mMixerUnit, kMatrixMixerParam_PostAveragePower, kAudioUnitScope_Input, 0, &amps[0]);
+	AudioUnitGetParameter(mMixerUnit, kMatrixMixerParam_PostPeakHoldLevel, kAudioUnitScope_Input, 0, &amps[1]);
+	
+	return amps[0];
+}
+
 #pragma mark -									
 #pragma mark -- CAPlayThroughHost Methods --
 
@@ -821,5 +837,14 @@ void CAPlayThroughHost::RemoveDeviceListeners(AudioDeviceID input)
 					err = AudioStreamRemovePropertyListener(streams[i], 0, kAudioStreamPropertyPhysicalFormat, StreamListener);
 			}
 		}
+	}
+}
+
+float CAPlayThroughHost::GetAverageVolume() { 
+	if (mPlayThrough){
+		return mPlayThrough->GetAverageVolume(); 
+	}
+	else{
+		return -60.0;
 	}
 }

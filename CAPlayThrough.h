@@ -76,6 +76,8 @@ public:
 	OSStatus	Start();
 	OSStatus	Stop();
 	Boolean		IsRunning();
+	
+	float GetAverageVolume();
 
 private:
 	CAPlayThrough* GetPlayThrough() { return mPlayThrough; }
